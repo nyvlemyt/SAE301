@@ -11,17 +11,42 @@
     <div id="page">
 <h1>Resultat</h1>
 
-<p> hehe <p>
-<p> <?php echo "hoho" . $data ?></p>
+
 <div> 
-    <ol>
-        <?php foreach($data as $ligne) : ?>
-        <li>
-            <?= print_r($ligne) ?>
-        </li>
-        <?php endforeach?>
-    </ol>
+    
+    <?php foreach($data as $key => $ligne) : ?>
+    <ul>
+        <?php // Supposons que $key peut être une date ou une autre propriété significative pour chaque $ligne ?>
+        <li><strong><?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?></strong></li>
+        
+        <?php if($key =='films'): ?>
+            <ul>
+        <?php foreach($ligne as $k => $val) : ?> 
+            <li>
+                <?php foreach($val as $c => $v) : ?>
+                    <li>
+                        <?= htmlspecialchars($v, ENT_QUOTES, 'UTF-8') ?>
+                    </li>
+                <?php endforeach; ?>
+                </li>
+        <?php endforeach; ?>
+                </ul>
+        <?php else : ?>
+            <?php foreach($ligne as $k => $val) : ?> 
+            <li>
+                <?= htmlspecialchars($val, ENT_QUOTES, 'UTF-8') ?>
+            </li>
+            <?php endforeach; ?>
+        <?php endif; ?>
+            
+    </ul>
+    <?php endforeach; ?>
+
+   
 </div>
-        </div>
         </body>
         </html>
+
+
+
+

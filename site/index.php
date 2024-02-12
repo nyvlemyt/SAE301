@@ -1,6 +1,7 @@
 <?php
 
 require_once "Utils/functions.php";
+require_once "Utils/credentials.php";
 require_once "Models/Model.php";
 require_once "Controllers/Controller.php";
 

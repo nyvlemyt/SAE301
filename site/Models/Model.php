@@ -226,12 +226,103 @@ class Model {
 
     public function graphe($expression)
     {
-        $requete = $this->bd->prepare("SELECT nconst, primaryname, primaryprofession, knownfortitles FROM namebasics WHERE primaryname ~* :expression AND cardinality(string_to_array(knownfortitles, ',')) > 2 AND 'actor' = any(string_to_array(primaryprofession, ',')) limit(1);"); 
+        // Recherche l'acteur le plus populaire correspondant à l'expression
+        $actorResults = $this->nom($expression);
+    
+        // Initialise un tableau pour stocker les résultats finaux
+        $finalResults = [];
+    
+        if (!empty($actorResults)) {
+            // Supposons que le résultat contient un seul acteur le plus populaire
+            $actor = $actorResults[0];
+            
+            // Utilise l'ID de cet acteur pour trouver tous les films associés
+            $filmsResults = $this->films($actor['nconst']);
+            
+            // Prépare les résultats finaux
+            $finalResults = [
+                'actor' => $actor,
+                'films' => $filmsResults
+            ];
+        }
+
+        return $finalResults;
+
+        //$requete = $this->bd->prepare("SELECT tconst FROM titleprincipals WHERE nconst= 'nm0000226';");
+       //// $requete->bindValue(":expression", "$expression", PDO::PARAM_STR);
+        //$requete->execute();
+        //$resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        //return $resultat;
+    }
+
+    public function nom($expression)
+    {
+        $requete = $this->bd->prepare("SELECT nb.nconst, nb.primaryname, SUM(tr.numvotes) AS popularity_score
+        FROM namebasics nb
+        CROSS JOIN LATERAL UNNEST(string_to_array(nb.knownfortitles, ',')) AS kft(tconst)
+        JOIN titleratings tr ON kft.tconst = tr.tconst
+        WHERE nb.primaryname = :expression AND cardinality(string_to_array(knownfortitles, ',')) > 2 AND 'actor' = any(string_to_array(primaryprofession, ','))
+        GROUP BY nb.nconst, nb.primaryname
+        ORDER BY popularity_score DESC limit(1);"); 
         $requete->bindValue(":expression", "$expression", PDO::PARAM_STR);
         $requete->execute();
         $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
         return $resultat;
     }
+
+    public function films($expression)
+    {
+        $requete = $this->bd->prepare("WITH UniqueTitles AS (
+            SELECT
+                tb.tconst,
+                COALESCE(te.parenttconst, tb.tconst) AS effective_tconst,
+                CASE
+                    WHEN te.parenttconst IS NOT NULL THEN (SELECT originaltitle FROM titlebasics WHERE tconst = te.parenttconst)
+                    ELSE tb.originaltitle
+                END AS title,
+                tb.genres
+            FROM titlebasics tb
+            LEFT JOIN titleepisode te ON tb.tconst = te.tconst
+            JOIN titleprincipals tp ON tb.tconst = tp.tconst
+            WHERE tp.nconst = '$expression'
+            AND (
+                tb.genres NOT LIKE '%Game-Show%'
+                AND tb.genres NOT LIKE '%Talk-Show%'
+                AND tb.genres NOT LIKE '%Adult%'
+                AND tb.genres NOT LIKE '%Documentary%'
+                AND tb.genres NOT LIKE '%News%'
+                AND tb.genres NOT LIKE '%Reality-TV%'
+            )
+        )
+        SELECT DISTINCT
+            effective_tconst,
+            title,
+            genres
+        FROM UniqueTitles
+        ORDER BY effective_tconst;
+        ");
+        $requete->execute();
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        return $resultat;
+    }
+
+    public function com($tab1, $tab2)
+    {
+        $bool = false; 
+        $chemin = [] ; 
+        while ($bool)
+        {
+            foreach($tab1 as $key => $val)
+            {
+                if($val = $tab2)
+                {
+                    $bool = true; 
+                }
+                else 
+                {
+                    $chemin = $val; 
+                }
+            }
+        }
+    }
 }
-
-

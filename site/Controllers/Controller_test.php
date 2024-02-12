@@ -14,7 +14,7 @@ public function action_home() {
     public function action_commun() {
         if (isset($_GET['commun'])) {
             $m = Model::getModel() ;
-            $data = $m->graphe('Will Smith');
+            $data = $m->graphe($_GET['commun']);
             $this->render("test", ['data' => $data]);
         }
         else {
