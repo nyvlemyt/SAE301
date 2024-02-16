@@ -1,0 +1,162 @@
+                tb.genres NOT LIKE '%Game-Show%'
+                AND tb.genres NOT LIKE '%Talk-Show%'
+                AND tb.genres NOT LIKE '%Adult%'
+                AND tb.genres NOT LIKE '%Documentary%'
+                AND tb.genres NOT LIKE '%News%'
+                AND tb.genres NOT LIKE '%Reality-TV%'
+
+
+                            AND (
+                tb.titletype = 'tvMovie' 
+                OR tb.titletype = 'tvSeries'
+                OR tb.titletype = 'movie'
+            )
+
+
+
+
+### Initialisation du graphe en dehors du bloc try pour s'assurer qu'il est toujours défini
+##G = nx.Graph()
+##
+##try:
+##    # Connexion à la base de données
+##    conn = psycopg2.connect(conn_string)
+##    cursor = conn.cursor()
+##    
+##    # Requête pour extraire les données pertinentes
+##    query = """
+##    SELECT tb.tconst, tb.originaltitle, tp.nconst, nb.primaryname
+##    FROM titlebasics tb
+##    JOIN titleprincipals tp ON tb.tconst = tp.tconst
+##    JOIN namebasics nb ON tp.nconst = nb.nconst
+##    WHERE tb.titletype IN ('movie', 'tvSeries', 'tvMovie')
+##      AND NOT EXISTS (
+##        SELECT 1
+##        FROM UNNEST(STRING_TO_ARRAY(tb.genres, ',')) AS genre
+##        WHERE genre = ANY (ARRAY['Adult', 'Game-Show', 'News', 'Reality-TV', 'Talk-Show', 'Short']) -- Liste des genres à exclure
+##      );
+##    """
+##    
+##    cursor.execute(query)
+##    
+##    # Récupération et traitement des résultats pour construire le graphe
+##    for tconst, originaltitle, nconst, primaryname in cursor.fetchall():
+##        # Correspondance correcte avec les colonnes sélectionnées
+##        if not G.has_node(tconst):
+##            G.add_node(tconst, name=originaltitle, type='title')
+##        
+##        if not G.has_node(nconst):
+##            G.add_node(nconst, name=primaryname, type='person')
+##        
+##        G.add_edge(tconst, nconst)
+##
+##except Exception as e:
+##    print("Erreur lors de la connexion à la base de données:", e)
+##finally:
+##    if 'conn' in locals():
+##        cursor.close()
+##        conn.close()
+##
+### Afficher quelques informations basiques sur le graphe, en dehors du bloc try
+##print(f"Nombre de nœuds : {G.number_of_nodes()}")
+##print(f"Nombre d'arêtes : {G.number_of_edges()}")
+##
+
+
+
+
+
+####try:
+####    # Connexion à la base de données
+####    conn = psycopg2.connect(conn_string)
+####    cursor = conn.cursor()
+####    
+####    # Requête pour extraire les données pertinentes
+####    query = """
+####    SELECT tb.tconst, tb.originaltitle, tb.titletype, tp.nconst, nb.primaryname
+####    FROM titlebasics tb
+####    JOIN titleprincipals tp ON tb.tconst = tp.tconst
+####    JOIN namebasics nb ON tp.nconst = nb.nconst
+####    WHERE tb.titletype IN ('movie', 'tvSeries', 'tvMovie');
+####    """
+####    
+####    cursor.execute(query)
+####    
+####    # Récupération et traitement des résultats pour construire le graphe
+####    for tconst, originaltitle, nconst, primaryname in cursor.fetchall():
+####        # Ajouter un nœud pour le titre s'il n'existe pas déjà
+####        if not G.has_node(tconst):
+####            G.add_node(tconst, name=originaltitle, type='title')
+####        
+####        # Ajouter un nœud pour la personne s'il n'existe pas déjà
+####        if not G.has_node(nconst):
+####            G.add_node(nconst, name=primaryname, type='person')
+####        
+####        # Ajouter une arête entre la personne et le titre
+####        G.add_edge(tconst, nconst)
+####
+####except Exception as e:
+####    print("Erreur lors de la connexion à la base de données:", e)
+####finally:
+####    if conn:
+####        cursor.close()
+####        conn.close()
+####
+##### Afficher quelques informations basiques sur le graphe
+####print(f"Nombre de nœuds : {G.number_of_nodes()}")
+####print(f"Nombre d'arêtes : {G.number_of_edges()}")
+####
+####
+####
+####
+####    cursor.execute(query)
+####    
+####    # Récupération des résultats
+####    results = cursor.fetchall()
+####    
+####    # Traitement des résultats
+####    # Par exemple, construire un graphe ou simplement afficher les résultats
+####    for row in results:
+####        print(row)
+####    
+####except Exception as e:
+####    print("Erreur lors de la connexion à la base de données:", e)
+####finally:
+####    if conn:
+####        cursor.close()
+####        conn.close()
+####
+####
+##### Exemple de données extraites (tconst, originaltitle, nconst, primaryname)
+####data = [
+####    ('tt0111161', 'The Shawshank Redemption', 'nm0000209', 'Tim Robbins'),
+####    ('tt0111161', 'The Shawshank Redemption', 'nm0000151', 'Morgan Freeman'),
+####    # Ajoutez d'autres relations ici
+####]
+####
+##### Créer un graphe vide
+####G = nx.Graph()
+####
+##### Ajouter des nœuds et des arêtes au graphe basé sur les données extraites
+####for tconst, title, nconst, name in data:
+####    # Ajouter un nœud pour le titre s'il n'existe pas déjà
+####    if not G.has_node(tconst):
+####        G.add_node(tconst, name=title, type='title')
+####    
+####    # Ajouter un nœud pour la personne s'il n'existe pas déjà
+####    if not G.has_node(nconst):
+####        G.add_node(nconst, name=name, type='person')
+####    
+####    # Ajouter une arête entre la personne et le titre
+####    G.add_edge(tconst, nconst)
+####
+##### Afficher quelques informations basiques sur le graphe
+####print(f"Nombre de nœuds : {G.number_of_nodes()}")
+####print(f"Nombre d'arêtes : {G.number_of_edges()}")
+####
+##### Pour afficher tous les nœuds (optionnel)
+##### print(G.nodes(data=True))
+####
+##### Pour afficher toutes les arêtes (optionnel)
+##### print(G.edges())
+####

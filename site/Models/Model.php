@@ -224,24 +224,59 @@ class Model {
         return $donnees;
     }
 
-    public function graphe($expression)
+    public function graphe2($expression, $expression2)
     {
         // Recherche l'acteur le plus populaire correspondant à l'expression
-        $actorResults = $this->nom($expression);
+        $actorRes1= $this->nom($expression);
+        $actorRes2= $this->nom($expression2); 
     
         // Initialise un tableau pour stocker les résultats finaux
         $finalResults = [];
     
         if (!empty($actorResults)) {
             // Supposons que le résultat contient un seul acteur le plus populaire
-            $actor = $actorResults[0];
+            $actor1 = $actorRes1[0];
+            $actor2 = $actorRes2[0];
             
             // Utilise l'ID de cet acteur pour trouver tous les films associés
-            $filmsResults = $this->films($actor['nconst']);
+            $filmsResults = $this->trouver($actor1['nconst'], $actor2['nconst']);
             
             // Prépare les résultats finaux
             $finalResults = [
-                'actor' => $actor,
+                'actor 1' => $actor1,
+                'actor 2' => $actor2,
+                'films' => $filmsResults
+            ];
+        }
+
+        return $finalResults;
+
+        //$requete = $this->bd->prepare("SELECT tconst FROM titleprincipals WHERE nconst= 'nm0000226';");
+       //// $requete->bindValue(":expression", "$expression", PDO::PARAM_STR);
+        //$requete->execute();
+        //$resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        //return $resultat;
+    }
+    public function graphe($expression)
+    {
+        
+        // Recherche l'acteur le plus populaire correspondant à l'expression
+        $actorRes1= $this->nom($expression); 
+    
+        // Initialise un tableau pour stocker les résultats finaux
+        $finalResults = [];
+    
+        if (!empty($actorResults)) {
+            // Supposons que le résultat contient un seul acteur le plus populaire
+            $actor1 = $actorRes1[0];
+            
+            
+            // Utilise l'ID de cet acteur pour trouver tous les films associés
+            $filmsResults = $this->films($actor1['nconst']);
+            
+            // Prépare les résultats finaux
+            $finalResults = [
+                'actor 1' => $actor1,
                 'films' => $filmsResults
             ];
         }
@@ -255,13 +290,100 @@ class Model {
         //return $resultat;
     }
 
-    public function nom($expression)
+    public function rapprochementNom($expression1, $expression2)
+    {
+        $source= $this->nom($expression1);
+        $target= $this->nom($expression2);
+        // Exécution du script Python et capture de la sortie
+        // Construire la commande pour exécuter le script Python avec les arguments source et target
+        $$scriptPath = '../../scripts/rapprochement.py'; 
+        $command = escapeshellcmd("python3 $scriptPath $source $target");
+        exec($command, $output, $resultaVar);
+        
+
+        // Convertir la sortie JSON en tableau PHP
+        $path = json_decode($output, true); // Le second paramètre à true pour obtenir un tableau associatif
+        $personIds = array_filter($path, function($id) { return strpos($id, 'nm') === 0; });
+        $titleIds = array_filter($path, function($id) { return strpos($id, 'tt') === 0; });
+
+
+        // Fonction pour préparer et exécuter une requête
+        // Récupérer les informations pour tconst
+        $titleDetails = execution($tconsts, true);
+        // Récupérer les informations pour nconst
+        $nameDetails = execution($nconsts, false);
+
+        return $this->alternerTableaux($nameDetails,$titleDetails); 
+    }
+
+    public function rapprochementFilm($expression1, $expression2)
+    {
+        $source= $this->film($expression1);
+        $target= $this->film($expression2);
+        // Exécution du script Python et capture de la sortie
+        // Construire la commande pour exécuter le script Python avec les arguments source et target
+        $$scriptPath = '../../scripts/rapprochement.py'; 
+        $command = escapeshellcmd("python3 $scriptPath \'$source\' \'$target\'");
+        exec($command, $output, $resultaVar);
+
+        // Convertir la sortie JSON en tableau PHP
+        $path = json_decode($output, true); // Le second paramètre à true pour obtenir un tableau associatif
+
+        $personIds = array_filter($path, function($id) { return strpos($id, 'nm') === 0; });
+        $titleIds = array_filter($path, function($id) { return strpos($id, 'tt') === 0; });
+
+
+        // Fonction pour préparer et exécuter une requête
+        // Récupérer les informations pour tconst
+        $titleDetails = execution($tconsts, true);
+        // Récupérer les informations pour nconst
+        $nameDetails = execution($nconsts, false);
+        
+        return $this->alternerTableaux($titleDetails,$nameDetails); 
+    }
+
+    function execution($ids, $isTitle = true) 
+    {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        if ($isTitle) {
+            $query = "SELECT tconst, originaltitle FROM resultats_intermediaires WHERE tconst IN ($placeholders)";
+        } else {
+            $query = "SELECT nconst, primaryname FROM resultats_intermediaires WHERE nconst IN ($placeholders)";
+        }
+    
+        $requete = $this->bd->prepare($query);
+        $stmt->execute(array_values($ids)); // Utilisez array_values pour ré-indexer les clés si nécessaire
+        $requete->execute();
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        return $resultat;
+    }
+
+    function alternerTableaux(array $tab1, array $tab2) {
+        $result = [];
+        $maxLength = max(count($tab1), count($tab2));
+    
+        for ($i = 0; $i < $maxLength; $i++) {
+            if (isset($tab1[$i])) {
+                $result[] = $tab1[$i];
+            }
+            if (isset($tab2[$i])) {
+                $result[] = $tab2[$i];
+            }
+        }
+    
+        return $result;
+    }
+
+    public function nom2($expression)
     {
         $requete = $this->bd->prepare("SELECT nb.nconst, nb.primaryname, SUM(tr.numvotes) AS popularity_score
         FROM namebasics nb
         CROSS JOIN LATERAL UNNEST(string_to_array(nb.knownfortitles, ',')) AS kft(tconst)
         JOIN titleratings tr ON kft.tconst = tr.tconst
-        WHERE nb.primaryname = :expression AND cardinality(string_to_array(knownfortitles, ',')) > 2 AND 'actor' = any(string_to_array(primaryprofession, ','))
+        WHERE nb.primaryname = :expression AND cardinality(string_to_array(knownfortitles, ',')) > 2 AND (
+            'actor' = any(string_to_array(primaryprofession, ','))
+            OR 'actress' = any(string_to_array(primaryprofession, ','))
+            )
         GROUP BY nb.nconst, nb.primaryname
         ORDER BY popularity_score DESC limit(1);"); 
         $requete->bindValue(":expression", "$expression", PDO::PARAM_STR);
@@ -270,7 +392,25 @@ class Model {
         return $resultat;
     }
 
-    public function films($expression)
+    public function film($expression)
+    {
+        $requete = $this->bd->prepare("SELECT tconst FROM titlebasics WHERE originaltitle= :expression");
+        $requete->bindValue(":expression", "$expression", PDO::PARAM_STR);
+        $requete->execute();
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        return $resultat;
+    }
+
+    public function nom($expression)
+    {
+        $requete = $this->bd->prepare("SELECT * from get_popular_actor(':expression');"); 
+        $requete->bindValue(":expression", "$expression", PDO::PARAM_STR);
+        $requete->execute();
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        return $resultat;
+    }
+    
+    public function test_films($expression)
     {
         $requete = $this->bd->prepare("WITH UniqueTitles AS (
             SELECT
@@ -285,44 +425,57 @@ class Model {
             LEFT JOIN titleepisode te ON tb.tconst = te.tconst
             JOIN titleprincipals tp ON tb.tconst = tp.tconst
             WHERE tp.nconst = '$expression'
-            AND (
-                tb.genres NOT LIKE '%Game-Show%'
-                AND tb.genres NOT LIKE '%Talk-Show%'
-                AND tb.genres NOT LIKE '%Adult%'
-                AND tb.genres NOT LIKE '%Documentary%'
-                AND tb.genres NOT LIKE '%News%'
-                AND tb.genres NOT LIKE '%Reality-TV%'
-            )
         )
         SELECT DISTINCT
             effective_tconst,
             title,
             genres
         FROM UniqueTitles
-        ORDER BY effective_tconst;
-        ");
+        ORDER BY effective_tconst;");
         $requete->execute();
         $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
         return $resultat;
     }
 
-    public function com($tab1, $tab2)
+    public function test_trouver($expression, $expression2)
     {
-        $bool = false; 
-        $chemin = [] ; 
-        while ($bool)
-        {
-            foreach($tab1 as $key => $val)
-            {
-                if($val = $tab2)
-                {
-                    $bool = true; 
-                }
-                else 
-                {
-                    $chemin = $val; 
-                }
-            }
-        }
+        $requete = $this->bd->prepare("WITH UniqueTitlesExpr1 AS (
+            SELECT
+                COALESCE(te.parenttconst, tb.tconst) AS effective_tconst,
+                CASE
+                    WHEN te.parenttconst IS NOT NULL THEN (SELECT originaltitle FROM titlebasics WHERE tconst = te.parenttconst)
+                    ELSE tb.originaltitle
+                END AS title,
+                tb.genres
+            FROM titlebasics tb
+            LEFT JOIN titleepisode te ON tb.tconst = te.tconst
+            JOIN titleprincipals tp ON tb.tconst = tp.tconst
+            WHERE tp.nconst = '$expression'
+        ),
+        UniqueTitlesExpr2 AS (
+            SELECT
+                COALESCE(te.parenttconst, tb.tconst) AS effective_tconst,
+                CASE
+                    WHEN te.parenttconst IS NOT NULL THEN (SELECT originaltitle FROM titlebasics WHERE tconst = te.parenttconst)
+                    ELSE tb.originaltitle
+                END AS title,
+                tb.genres
+            FROM titlebasics tb
+            LEFT JOIN titleepisode te ON tb.tconst = te.tconst
+            JOIN titleprincipals tp ON tb.tconst = tp.tconst
+            WHERE tp.nconst = '$expression2'
+        )
+        SELECT DISTINCT
+            ut1.effective_tconst,
+            ut1.title,
+            ut1.genres
+        FROM UniqueTitlesExpr1 ut1
+        JOIN UniqueTitlesExpr2 ut2 ON ut1.effective_tconst = ut2.effective_tconst
+        ORDER BY ut1.effective_tconst;");
+        $requete->execute();
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
+        return $resultat;
+        
     }
+
 }
